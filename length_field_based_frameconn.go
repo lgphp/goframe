@@ -25,6 +25,8 @@ type EncoderConfig struct {
 	LengthAdjustment int
 	// LengthIncludesLengthFieldLength is true, the length of the prepended length field is added to the value of the prepended length field
 	LengthIncludesLengthFieldLength bool
+	// Header will be prepend to each frame if set
+	Header []byte
 }
 
 // DecoderConfig config for decoder.
@@ -195,7 +197,15 @@ func (fc *lengthFieldBasedFrameConn) WriteFrame(p []byte) error {
 		return ErrUnsupportedlength
 	}
 
-	_, err = fc.w.Write(p)
+	headerLength := len(fc.encoderConfig.Header)
+	if headerLength > 0 {
+		b := make([]byte, headerLength + length)
+		copy(b, fc.encoderConfig.Header)
+		copy(b[headerLength:], p)
+		_, err = fc.w.Write(b)
+	} else {
+		_, err = fc.w.Write(p)
+	}
 	fc.w.Flush()
 	return err
 }
